@@ -71,7 +71,23 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
     };
   }
 
-  const { user: foundUser, team: foundTeam } = userWithTeam[0];
+  let { user: foundUser, team: foundTeam } = userWithTeam[0];
+
+  // Create a team for the user if they don't have one
+  if (!foundTeam) {
+    const newTeam: NewTeam = {
+      name: `${foundUser.email.split('@')[0]}'s Team`
+    };
+    const [insertedTeam] = await db.insert(teams).values(newTeam).returning();
+    foundTeam = insertedTeam;
+
+    const newTeamMember: NewTeamMember = {
+      userId: foundUser.id,
+      teamId: foundTeam.id,
+      role: 'owner'
+    };
+    await db.insert(teamMembers).values(newTeamMember);
+  }
 
   const isPasswordValid = await comparePasswords(
     password,
